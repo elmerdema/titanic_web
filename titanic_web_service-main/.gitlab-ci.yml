@@ -1,0 +1,49 @@
+stages:
+  - test
+  - build-and-push-to-registry
+
+variables:
+  CI: "true"
+
+services:
+  - name: docker:dind
+    alias: docker
+
+test:
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache docker-compose
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin
+  script:
+    - docker-compose -f docker-compose.ci.yml build
+    - docker-compose -f docker-compose.ci.yml up -d
+    - docker-compose -f docker-compose.ci.yml logs titanic-webapp-service
+    - docker-compose -f docker-compose.ci.yml exec -T titanic-webapp-service sh -c "ls -la"
+    - docker-compose -f docker-compose.ci.yml exec -T titanic-webapp-service sh -c "npx cypress run"
+    - docker-compose -f docker-compose.ci.yml down
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour
+  only:
+    - main
+    - develop
+
+build-and-push-to-registry:
+  stage: build-and-push-to-registry
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin
+  variables:
+    IMAGE_NAME: "titanic_web_image:latest"
+  script:
+    - docker build -t $CI_REGISTRY/ainb_24_carpathia/titanic_web_service/$IMAGE_NAME .
+    - docker images
+    - docker image push $CI_REGISTRY/ainb_24_carpathia/titanic_web_service/$IMAGE_NAME
+  only:
+    - main

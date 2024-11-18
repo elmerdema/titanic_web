@@ -1,0 +1,45 @@
+stages:          
+  - prepare
+  - test
+  - docker-build-and-push
+
+prepare:
+  stage: prepare
+  image: python:3.10-slim 
+  before_script:
+    - apt-get update && apt-get install -y git build-essential python3-dev 
+  script:
+    - pip install -r requirements.txt
+
+tests:
+  stage: test
+  image: python:3.10-slim
+  before_script:
+    - apt-get update && apt-get install -y git
+    - apt-get install -y python3-pip
+    - pip install pytest
+    - pip install pytest pytest-cov
+  script:
+    - pip install -r requirements.txt 
+    - coverage run -m pytest 
+    - coverage report
+    - coverage xml
+  artifacts:
+    paths:
+      - coverage.xml
+
+docker-build-and-push:
+  stage: docker-build-and-push
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login $CI_REGISTRY --username $CI_REGISTRY_USER --password-stdin
+  variables:
+    IMAGE_NAME: "titanic_model_image:latest"
+  script:
+    - docker build -t $CI_REGISTRY/ainb_24_carpathia/titanic_model_service/$IMAGE_NAME .
+    - docker images
+    - docker image push $CI_REGISTRY/ainb_24_carpathia/titanic_model_service/$IMAGE_NAME
+  only:
+    - main

@@ -1,0 +1,25 @@
+services:
+  titanic-model-service:
+    image: registry.mygit.th-deg.de/ainb_24_carpathia/titanic_model_service/titanic_model_image:latest
+    ports:
+      - "8000:8000"
+    networks:
+      - backend-network
+
+  titanic-webapp-service:
+    container_name: titanic-webapp-service
+    build:
+      context: .
+      dockerfile: Dockerfile.ci
+    ports:
+      - "8080:8080"
+    environment:
+      - MODEL_SERVICE_URL=http://titanic-model-service:8000
+    depends_on:
+      - titanic-model-service
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge

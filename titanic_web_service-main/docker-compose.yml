@@ -1,0 +1,11 @@
+services:
+  titanic-model-service:
+    build:
+      context: titanic_model_service
+    image: titanic-model-service:latest
+
+  titanic-web-service:
+    build:
+      context: titanic_web_service
+    ports:
+      - "8080:8080"
